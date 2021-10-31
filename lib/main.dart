@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -13,24 +14,14 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or simply save your changes to "hot reload" in a Flutter IDE).
-        // Notice that the counter didn't reset back to zero; the application
-        // is not restarted.
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(title: 'PDF a voz'),
     );
   }
 }
@@ -43,14 +34,43 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
+enum TtsState { playing, stopped, paused, continued }
+
 class _MyHomePageState extends State<MyHomePage> {
   int _counter = 0;
   String? _newVoiceText;
   String _pdfText = "";
+  int _counterLoad = 15;
+  String splitText =
+      "Yo vivo en Granada, una ciudad pequeña que tiene monumentos muy importantes como la Alhambra. Aquí la comida es deliciosa y son";
+
+  List<String> data = [];
+  int longDivision = 0;
+  int remainder = 0;
+  String TextRemainder = "";
+
+  double volume = 0.5;
+  double pitch = 1.0;
+  double rate = 0.5;
+
+  FlutterTts flutterTts = FlutterTts();
+  Timer? timer;
+  var _controller = TextEditingController();
+
+  TtsState ttsState = TtsState.stopped;
+
+  get isPlaying => ttsState == TtsState.playing;
+  get isStopped => ttsState == TtsState.stopped;
+  get isPaused => ttsState == TtsState.paused;
+  get isContinued => ttsState == TtsState.continued;
 
   Future _speak() async {
     String? language = "es-ES";
     flutterTts.setLanguage(language);
+
+    await flutterTts.setVolume(volume);
+    await flutterTts.setSpeechRate(rate);
+    await flutterTts.setPitch(pitch);
 
     if (_newVoiceText != null) {
       if (_newVoiceText!.isNotEmpty) {
@@ -60,17 +80,32 @@ class _MyHomePageState extends State<MyHomePage> {
     }
   }
 
-  FlutterTts flutterTts = FlutterTts();
+  Future _stop() async {
+    var result = await flutterTts.stop();
+    if (result == 1) setState(() => ttsState = TtsState.stopped);
+  }
 
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+  Future _pause() async {
+    var result = await flutterTts.pause();
+    if (result == 1) setState(() => ttsState = TtsState.paused);
   }
 
   void _onChange(String text) {
     setState(() {
       _newVoiceText = text;
+    });
+  }
+
+  void startTimer() {
+    timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      setState(() {
+        if (_counterLoad > 0) {
+          _counterLoad--;
+        } else {
+          timer.cancel();
+          _counterLoad = 15;
+        }
+      });
     });
   }
 
@@ -84,7 +119,11 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            TextButton(
+            _addImage(),
+            SizedBox(
+              height: 20,
+            ),
+            ElevatedButton(
                 onPressed: () async {
                   FilePickerResult? result =
                       await FilePicker.platform.pickFiles();
@@ -100,27 +139,60 @@ class _MyHomePageState extends State<MyHomePage> {
                     text.replaceAll("\n", " ");
 
                     _pdfText = text;
-                    print(_pdfText);
 
-                    // final PdfDocument document = PdfDocument(inputBytes: File(file.path))
+                    longDivision = _pdfText.length ~/ 4076;
+                    remainder = _pdfText.length % 4076;
+                    data = splitStringByLength(_pdfText, longDivision);
+                    int i = 0;
+
+                    if (_pdfText.length >= 4076) {
+                      for (int i = _pdfText.length - remainder;
+                          i < _pdfText.length;
+                          i++) {
+                        print(_pdfText[i]);
+                      }
+                    }
                   }
+
+                  startTimer();
                 },
-                child: Text("getFileText")),
+                child: Text("Elegir Archivo")),
+            SizedBox(
+              height: 20,
+            ),
+            Text(
+              "${_counterLoad}",
+              style: TextStyle(
+                fontSize: 20,
+              ),
+            ),
+            SizedBox(
+              height: 20,
+            ),
+            Text(
+              "Espera para copiar y pegar",
+              style: TextStyle(fontSize: 20),
+            ),
             _inputSection(),
-            TextButton(onPressed: _speak, child: Text("read the book")),
-            TextButton(
+            SizedBox(
+              height: 20,
+            ),
+            bottomBar(),
+            SizedBox(
+              height: 20,
+            ),
+            ElevatedButton(
                 onPressed: () {
                   Clipboard.setData(ClipboardData(text: _pdfText));
                 },
-                child: Text("get the text")),
+                child: Text("Copiar Texto PDF")),
+            SizedBox(
+              height: 20,
+            ),
+            _buildSliders(),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 
@@ -131,5 +203,91 @@ class _MyHomePageState extends State<MyHomePage> {
         onChanged: (String value) {
           _onChange(value);
         },
+        decoration: InputDecoration(
+          hintText: "Pegue el texto del PDF",
+          suffixIcon: IconButton(
+            onPressed: _controller.clear,
+            icon: Icon(Icons.clear),
+          ),
+        ),
+        controller: _controller,
       ));
+
+  bottomBar() => Container(
+        margin: EdgeInsets.all(10.0),
+        height: 50,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: <Widget>[
+            FloatingActionButton(
+              onPressed: _speak,
+              child: Icon(Icons.play_arrow),
+              backgroundColor: Colors.green,
+            ),
+            FloatingActionButton(
+              onPressed: _stop,
+              backgroundColor: Colors.red,
+              child: Icon(Icons.stop),
+            ),
+          ],
+        ),
+      );
+
+  Widget _buildSliders() {
+    return Column(
+      children: [_volume(), _pitch(), _rate()],
+    );
+  }
+
+  Widget _addImage() {
+    return Container(
+      height: 100,
+      width: 100,
+      child: Image.asset("assets/PDF_icon.png"),
+    );
+  }
+
+  Widget _volume() {
+    return Slider(
+        value: volume,
+        onChanged: (newVolume) {
+          setState(() => volume = newVolume);
+        },
+        min: 0.0,
+        max: 1.0,
+        divisions: 10,
+        label: "Volume: $volume");
+  }
+
+  Widget _pitch() {
+    return Slider(
+      value: pitch,
+      onChanged: (newPitch) {
+        setState(() => pitch = newPitch);
+      },
+      min: 0.5,
+      max: 2.0,
+      divisions: 15,
+      label: "Pitch: $pitch",
+      activeColor: Colors.red,
+    );
+  }
+
+  Widget _rate() {
+    return Slider(
+      value: rate,
+      onChanged: (newRate) {
+        setState(() => rate = newRate);
+      },
+      min: 0.0,
+      max: 1.0,
+      divisions: 10,
+      label: "Rate: $rate",
+      activeColor: Colors.green,
+    );
+  }
+
+  // split string in by caracters
+  List<String> splitStringByLength(String str, int length) =>
+      [str.substring(0, length), str.substring(length)];
 }
