@@ -109,6 +109,17 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  List<dynamic> splitArray(String srt, int lenght) {
+    var numChunks = (srt.length / lenght).ceil();
+    var chunks = []..length = numChunks;
+
+    for (var i = 0, o = 0; i < numChunks; i++, o += lenght) {
+      chunks[i] = srt.substring(o, lenght);
+    }
+
+    return chunks;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -139,20 +150,27 @@ class _MyHomePageState extends State<MyHomePage> {
                     text.replaceAll("\n", " ");
 
                     _pdfText = text;
+                    print(_pdfText.length);
 
-                    longDivision = _pdfText.length ~/ 4076;
-                    remainder = _pdfText.length % 4076;
-                    data = splitStringByLength(_pdfText, longDivision);
-                    int i = 0;
+                    // longDivision = _pdfText.length ~/ 4076;
+                    // remainder = _pdfText.length % 4076;
 
-                    if (_pdfText.length >= 4076) {
-                      for (int i = _pdfText.length - remainder;
-                          i < _pdfText.length;
-                          i++) {
-                        print(_pdfText[i]);
-                      }
-                    }
+                    // if (remainder != 0) {
+                    //   for (int i = _pdfText.length - remainder;
+                    //       i < _pdfText.length;
+                    //       i++) {
+                    //     TextRemainder += _pdfText[i];
+                    //     data.add(TextRemainder);
+                    //   }
+                    // }
+
+                    // List<dynamic> listSplit = splitArray(_pdfText, 4076);
+                    // print(listSplit);
                   }
+
+                  String firstValue = data[2];
+                  print(firstValue.length);
+                  data = [];
 
                   startTimer();
                 },
@@ -286,8 +304,4 @@ class _MyHomePageState extends State<MyHomePage> {
       activeColor: Colors.green,
     );
   }
-
-  // split string in by caracters
-  List<String> splitStringByLength(String str, int length) =>
-      [str.substring(0, length), str.substring(length)];
 }
