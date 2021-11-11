@@ -44,7 +44,7 @@ class _MyHomePageState extends State<MyHomePage> {
   String splitText =
       "Yo vivo en Granada, una ciudad pequeña que tiene monumentos muy importantes como la Alhambra. Aquí la comida es deliciosa y son";
 
-  List<String> data = [];
+  List<dynamic> list = [];
   int longDivision = 0;
   int remainder = 0;
   String TextRemainder = "";
@@ -64,7 +64,7 @@ class _MyHomePageState extends State<MyHomePage> {
   get isPaused => ttsState == TtsState.paused;
   get isContinued => ttsState == TtsState.continued;
 
-  Future _speak() async {
+  Future _speak(List<dynamic> lst) async {
     String? language = "es-ES";
     flutterTts.setLanguage(language);
 
@@ -72,10 +72,11 @@ class _MyHomePageState extends State<MyHomePage> {
     await flutterTts.setSpeechRate(rate);
     await flutterTts.setPitch(pitch);
 
-    if (_newVoiceText != null) {
-      if (_newVoiceText!.isNotEmpty) {
+    if (!lst.isEmpty || !isPlaying) {
+      for (var element in lst) {
         await flutterTts.awaitSpeakCompletion(true);
-        await flutterTts.speak(_newVoiceText!);
+        var result = await flutterTts.speak(element.toString());
+        if (result == 1) setState(() => ttsState = TtsState.playing);
       }
     }
   }
@@ -109,14 +110,26 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  List<dynamic> splitArray(String srt, int lenght) {
+  List<dynamic> splitArray(String srt, int lenght, int remainder) {
     var numChunks = (srt.length / lenght).ceil();
-    var chunks = []..length = numChunks;
 
-    for (var i = 0, o = 0; i < numChunks; i++, o += lenght) {
-      chunks[i] = srt.substring(o, lenght);
+    var chunks = [];
+
+    // print(numChunks);
+    var isExact = remainder == 0;
+    var maxValue = isExact ? numChunks : numChunks - 1;
+    for (var i = 0, o = 0; i < maxValue; i++, o += lenght) {
+      // print(i);
+      chunks.add(srt.substring(o, o + lenght).toString());
     }
 
+    if (!isExact) {
+      chunks.add(
+          srt.substring(srt.length - remainder, srt.length - 1).toString());
+    }
+
+    print(chunks[100]);
+    print(numChunks);
     return chunks;
   }
 
@@ -150,27 +163,14 @@ class _MyHomePageState extends State<MyHomePage> {
                     text.replaceAll("\n", " ");
 
                     _pdfText = text;
-                    print(_pdfText.length);
+                    // print(_pdfText.length);
 
                     // longDivision = _pdfText.length ~/ 4076;
-                    // remainder = _pdfText.length % 4076;
+                    remainder = _pdfText.length % 4076;
 
-                    // if (remainder != 0) {
-                    //   for (int i = _pdfText.length - remainder;
-                    //       i < _pdfText.length;
-                    //       i++) {
-                    //     TextRemainder += _pdfText[i];
-                    //     data.add(TextRemainder);
-                    //   }
-                    // }
-
-                    // List<dynamic> listSplit = splitArray(_pdfText, 4076);
-                    // print(listSplit);
+                    list = splitArray(_pdfText, 4076, remainder);
+                    await _speak(list);
                   }
-
-                  String firstValue = data[2];
-                  print(firstValue.length);
-                  data = [];
 
                   startTimer();
                 },
@@ -238,7 +238,9 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: <Widget>[
             FloatingActionButton(
-              onPressed: _speak,
+              onPressed: () async {
+                await _speak(list);
+              },
               child: Icon(Icons.play_arrow),
               backgroundColor: Colors.green,
             ),
