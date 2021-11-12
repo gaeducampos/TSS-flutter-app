@@ -128,8 +128,6 @@ class _MyHomePageState extends State<MyHomePage> {
           srt.substring(srt.length - remainder, srt.length - 1).toString());
     }
 
-    print(chunks[100]);
-    print(numChunks);
     return chunks;
   }
 
@@ -163,9 +161,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     text.replaceAll("\n", " ");
 
                     _pdfText = text;
-                    // print(_pdfText.length);
 
-                    // longDivision = _pdfText.length ~/ 4076;
                     remainder = _pdfText.length % 4076;
 
                     list = splitArray(_pdfText, 4076, remainder);
