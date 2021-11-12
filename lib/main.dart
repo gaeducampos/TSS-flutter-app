@@ -64,7 +64,7 @@ class _MyHomePageState extends State<MyHomePage> {
   get isPaused => ttsState == TtsState.paused;
   get isContinued => ttsState == TtsState.continued;
 
-  Future _speak(List<dynamic> lst) async {
+  Future _speak() async {
     String? language = "es-ES";
     flutterTts.setLanguage(language);
 
@@ -72,11 +72,10 @@ class _MyHomePageState extends State<MyHomePage> {
     await flutterTts.setSpeechRate(rate);
     await flutterTts.setPitch(pitch);
 
-    if (!lst.isEmpty || !isPlaying) {
-      for (var element in lst) {
+    if (_newVoiceText != null) {
+      if (_newVoiceText!.isNotEmpty) {
         await flutterTts.awaitSpeakCompletion(true);
-        var result = await flutterTts.speak(element.toString());
-        if (result == 1) setState(() => ttsState = TtsState.playing);
+        await flutterTts.speak(_newVoiceText!);
       }
     }
   }
@@ -161,11 +160,12 @@ class _MyHomePageState extends State<MyHomePage> {
                     text.replaceAll("\n", " ");
 
                     _pdfText = text;
-
+                    print(_pdfText.length);
                     remainder = _pdfText.length % 4076;
 
-                    list = splitArray(_pdfText, 4076, remainder);
-                    await _speak(list);
+                    if (_pdfText.length > 4076) {
+                      list = splitArray(_pdfText, 4000, remainder);
+                    }
                   }
 
                   startTimer();
@@ -197,7 +197,17 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             ElevatedButton(
                 onPressed: () {
-                  Clipboard.setData(ClipboardData(text: _pdfText));
+                  if (_pdfText.length <= 4076) {
+                    Clipboard.setData(ClipboardData(text: _pdfText));
+                  } else {
+                    Clipboard.setData(ClipboardData(text: list[0]));
+                    list.removeAt(0);
+                    if (list.length == 0) {
+                      AlertDialog(
+                        title: Text("Ya no hay más texto en el libro"),
+                      );
+                    }
+                  }
                 },
                 child: Text("Copiar Texto PDF")),
             SizedBox(
@@ -234,9 +244,7 @@ class _MyHomePageState extends State<MyHomePage> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: <Widget>[
             FloatingActionButton(
-              onPressed: () async {
-                await _speak(list);
-              },
+              onPressed: _speak,
               child: Icon(Icons.play_arrow),
               backgroundColor: Colors.green,
             ),
