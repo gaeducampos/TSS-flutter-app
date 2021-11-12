@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'PDF a voz'),
+      home: const MyHomePage(title: 'Lecto UFG '),
     );
   }
 }
@@ -37,12 +37,9 @@ class MyHomePage extends StatefulWidget {
 enum TtsState { playing, stopped, paused, continued }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
   String? _newVoiceText;
   String _pdfText = "";
   int _counterLoad = 15;
-  String splitText =
-      "Yo vivo en Granada, una ciudad pequeña que tiene monumentos muy importantes como la Alhambra. Aquí la comida es deliciosa y son";
 
   List<dynamic> list = [];
   int longDivision = 0;
@@ -52,6 +49,7 @@ class _MyHomePageState extends State<MyHomePage> {
   double volume = 0.5;
   double pitch = 1.0;
   double rate = 0.5;
+  var _counter = 0;
 
   FlutterTts flutterTts = FlutterTts();
   Timer? timer;
@@ -109,6 +107,15 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  void _decrement() {
+    setState(() {
+      _counter--;
+      if (_counter == 0) {
+        _counter = 0;
+      }
+    });
+  }
+
   List<dynamic> splitArray(String srt, int lenght, int remainder) {
     var numChunks = (srt.length / lenght).ceil();
 
@@ -132,7 +139,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    MaterialApp(
+      debugShowCheckedModeBanner: false,
+    );
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Text(widget.title),
       ),
@@ -161,10 +172,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
                     _pdfText = text;
                     print(_pdfText.length);
-                    remainder = _pdfText.length % 4076;
+                    remainder = _pdfText.length % 1000;
 
-                    if (_pdfText.length > 4076) {
-                      list = splitArray(_pdfText, 4000, remainder);
+                    if (_pdfText.length > 1000) {
+                      list = splitArray(_pdfText, 1000, remainder);
+                      _counter = list.length;
                     }
                   }
 
@@ -173,12 +185,6 @@ class _MyHomePageState extends State<MyHomePage> {
                 child: Text("Elegir Archivo")),
             SizedBox(
               height: 20,
-            ),
-            Text(
-              "${_counterLoad}",
-              style: TextStyle(
-                fontSize: 20,
-              ),
             ),
             SizedBox(
               height: 20,
@@ -197,7 +203,8 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             ElevatedButton(
                 onPressed: () {
-                  if (_pdfText.length <= 4076) {
+                  _decrement();
+                  if (_pdfText.length <= 1000) {
                     Clipboard.setData(ClipboardData(text: _pdfText));
                   } else {
                     Clipboard.setData(ClipboardData(text: list[0]));
@@ -213,7 +220,12 @@ class _MyHomePageState extends State<MyHomePage> {
             SizedBox(
               height: 20,
             ),
-            _buildSliders(),
+            Text(
+              "Restan de escuchar ${_counter} partes",
+              style: TextStyle(
+                fontSize: 20,
+              ),
+            ),
           ],
         ),
       ),
@@ -257,57 +269,11 @@ class _MyHomePageState extends State<MyHomePage> {
         ),
       );
 
-  Widget _buildSliders() {
-    return Column(
-      children: [_volume(), _pitch(), _rate()],
-    );
-  }
-
   Widget _addImage() {
     return Container(
-      height: 100,
-      width: 100,
+      height: 60,
+      width: 60,
       child: Image.asset("assets/PDF_icon.png"),
-    );
-  }
-
-  Widget _volume() {
-    return Slider(
-        value: volume,
-        onChanged: (newVolume) {
-          setState(() => volume = newVolume);
-        },
-        min: 0.0,
-        max: 1.0,
-        divisions: 10,
-        label: "Volume: $volume");
-  }
-
-  Widget _pitch() {
-    return Slider(
-      value: pitch,
-      onChanged: (newPitch) {
-        setState(() => pitch = newPitch);
-      },
-      min: 0.5,
-      max: 2.0,
-      divisions: 15,
-      label: "Pitch: $pitch",
-      activeColor: Colors.red,
-    );
-  }
-
-  Widget _rate() {
-    return Slider(
-      value: rate,
-      onChanged: (newRate) {
-        setState(() => rate = newRate);
-      },
-      min: 0.0,
-      max: 1.0,
-      divisions: 10,
-      label: "Rate: $rate",
-      activeColor: Colors.green,
     );
   }
 }
